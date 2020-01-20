@@ -409,7 +409,7 @@ func DetectMqtt(server string,uname string,upwd string,topic string)  (bool,stri
 func DetectMain() error {
 	problems:=make(map[int] string)
 	index:=0
-	config:=InitConfig("Config.json")
+	config:=InitConfig("config.json")
 	Network_statue,info:=DetectNetworkConnection(config.baseInfo.NetworkUrl)
 	AddProblems(problems,&index,info)
 	if Network_statue{
