@@ -209,10 +209,12 @@ func DetectCompassMap(config Config) (bool,string){
 	mapAttributes:=config.mapInfo.Attributes.Array()
 	info:="车端地图检测完毕，正常！"
 	flag:=true
-	//cmd := exec.Command("curl","-s",CarMapUrl)
-	//output,_:=cmd.CombinedOutput()
-
 	output:=ReadFile("compassMap.json")
+	if !Exists("compassMap.json"){
+		cmd := exec.Command("curl","-s",config.mapInfo.Url)
+		output,_=cmd.CombinedOutput()
+	}
+
 	res:=string(output)
 	isConnected:=gjson.Get(res,mapAttributes[0].String()).Bool()
 	if isConnected{
@@ -317,10 +319,11 @@ func DetectVnameMap(err error,info string,MOD_uos_config string,mapRoot string,U
 		if run_scene=="real.compass"{
 			vehicle_name_config:=gjson.Get(MOD_uos_config,uosAttributes[8].String()).String()
 
-			//cmd := exec.Command("curl","-s",UosUrl)
-			//output,_:=cmd.CombinedOutput()
-
 			output:=ReadFile("vehicle.json")
+			if !Exists("vehicle.json"){
+				cmd := exec.Command("curl","-s",UosUrl)
+				output,_=cmd.CombinedOutput()
+			}
 			vehicle_name_true:=gjson.Get(string(output),uosAttributes[9].String()).String()
 			mapPath:=mapRoot+gjson.Get(MOD_uos_config,uosAttributes[10].String()).String()
 			if vehicle_name_config==vehicle_name_true{
