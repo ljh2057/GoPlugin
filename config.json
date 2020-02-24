@@ -1,0 +1,55 @@
+{
+  "baseInfo": {
+    "networkUrl": "www.baidu.com:80",
+    "timeApi": "http://api.m.taobao.com/rest/api3.do?api=mtop.common.getTimestamp"
+  },
+  "mapInfo": {
+    "id": "20181005",
+    "url" : "localhost:8000/apis/v2/maps/current",
+    "attributes": [
+      "error_code",
+      "data.id",
+      "versions",
+      "version",
+      "data.version"
+    ]
+  },
+  "compassInfo" :{
+    "services": [
+      "/bin/bash /opt/compass/shell/startcompass",
+      "/opt/compass/depends/venv/bin/python3 /opt/compass/depends/venv/bin/supervisord -n -c /opt/compass/config/supervisord.conf",
+      "/opt/compass/depends/venv/bin/python3 /opt/compass/depends/venv/bin/flask run -h 0.0.0.0 -p 8000 --no-reload",
+      "python3 vehicle_server.pyc foreground",
+      "python3 ws_server.pyc",
+      "/opt/compass/depends/lib/bin/redis-server 127.0.0.1:20002",
+      "python3 map_server.pyc foreground",
+      "/opt/compass/mapcached/mapcached"
+    ]
+  },
+  "uosInfo": {
+    "path" : "/opt/compass/vehicle_backend/web_service/config.json",
+    "simulationCar" : "/etc/uos_config.json",
+    "realCar" : "/uos_common.json",
+    "url" : "localhost:8000/apis/v2/vehicle",
+    "attributes": [
+      "server\\.map",
+      "uos\\.path",
+      "server\\.cloud",
+      "mqtt\\.username",
+      "mqtt\\.password",
+      "mqtt\\.broker_id",
+      "_MOD_uos_config",
+      "run_scene",
+      "vehicle_name",
+      "data.vin",
+      "roadmap_fname"
+    ]
+  },
+  "certInfo": {
+    "dir" : "/opt/certs/",
+    "path" : "/opt/certs/device_cert.crt"
+  },
+  "outputInfo":{
+    "path": "result.json"
+  }
+}
