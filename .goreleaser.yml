@@ -10,7 +10,6 @@ archives:
     386: i386
     amd64: x86_64
   files:
-   - deploy.sh
    - config.json
 checksum:
   name_template: 'checksums.txt'
