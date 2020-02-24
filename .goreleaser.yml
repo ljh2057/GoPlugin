@@ -4,11 +4,12 @@ builds:
 - env:
   - CGO_ENABLED=0
 archives:
-- replacements:
+- id: deploy-archive
+  replacements:
     linux: Linux
     386: i386
     amd64: x86_64
-- files:
+  files:
    - deploy.sh
    - config.json
 checksum:
