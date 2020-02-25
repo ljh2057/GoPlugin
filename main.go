@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/eclipse/paho.mqtt.golang"
+	"github.com/tidwall/gjson"
+	"github.com/urfave/cli/v2"
 	"io/ioutil"
 	"log"
 	"math"
@@ -17,10 +20,6 @@ import (
 	"sort"
 	"strconv"
 	"time"
-
-	"github.com/eclipse/paho.mqtt.golang"
-	"github.com/tidwall/gjson"
-	"github.com/urfave/cli/v2"
 )
 
 type BaseInfo struct {
@@ -144,19 +143,16 @@ func AddProblems(problems map[int] string,index *int,info string)  {
 
 //确认UOS移动网络连接正常
 func DetectNetworkConnection(url string) (bool,string) {
-	info:="网络检测完毕，连接正常！"
-	flag:=true
+	flag,info:=true,"网络检测完毕，连接正常！"
 	_,err := net.DialTimeout("tcp",url,2*time.Second)
 	if err != nil {
-		flag=false
-		info="网络连接异常，检查网络连接！"
+		flag,info=false,"网络连接异常，检查网络连接！"
 	}
 	return flag,info
 }
 //确认UOS本地时钟正确
 func DetectTime(config Config) (bool,string)  {
-	info,TimeApi:="车端时间校正完毕，正常！",config.baseInfo.TimeApi
-	flag:=true
+	flag,info,TimeApi:=true,"车端时间校正完毕，正常！",config.baseInfo.TimeApi
 	resp,err:=http.Get(TimeApi)
 	if err!=nil{
 		info=""
@@ -178,14 +174,12 @@ func DetectTime(config Config) (bool,string)  {
 }
 //检测服务是否启动
 func DetectService(service string)(bool,string){
-	info:="compass服务检测完毕，所有服务均已正常启动!"
-	flag:=true
+	flag,info:=true,"compass服务检测完毕，所有服务均已正常启动!"
 	cmdStr:=fmt.Sprintf(`ps -ef | grep "%s" | grep -v grep`,service)
 	cmd:=exec.Command("sh","-c",cmdStr)
 	output,_:=cmd.CombinedOutput()
 	if string(output)==""{
-		info="compass服务检测异常，"+service+"服务未启动！"
-		flag=false
+		flag,info=false,"compass服务检测异常，"+service+"服务未启动！"
 	}
 	return flag,info
 }
@@ -203,35 +197,30 @@ func DetectCompass(config Config) (bool,string){
 }
 //1.1.2查看compass地图是否下载正确
 func DetectCompassMap(config Config) (bool,string){
-	//mapId:=config.mapInfo.Id
 	UosConfigPath:=config.uosInfo.path
-	//CarMapUrl:=config.mapInfo.Url
 	mapAttributes:=config.mapInfo.Attributes.Array()
-	info:="车端地图检测完毕，正常！"
-	flag:=true
-	output:=ReadFile("compassMap.json")
-	if !Exists("compassMap.json"){
+	info,flag:="车端地图检测完毕，正常！",true
+	var output []byte
+
+	if Exists("compassMap.json"){
+		output=ReadFile("compassMap.json")
+	}else {
 		cmd := exec.Command("curl","-s",config.mapInfo.Url)
 		output,_=cmd.CombinedOutput()
 	}
-
+  	if len(output)==0{
+		flag,info=false,"车端地图检测异常，未加载到车端数据！"
+		return flag,info
+	}
 	res:=string(output)
 	isConnected:=gjson.Get(res,mapAttributes[0].String()).Bool()
 	if isConnected{
-		flag=false
-		info="车端地图检测异常，地图未下载成功！"
+		flag,info=false,"车端地图检测异常，车端地图未下载成功！"
 	}else {
 		localMapId:=gjson.Get(res,mapAttributes[1].String()).String()
-		//if localMapId==mapId{
 		UosConfigPathStr:=string(ReadFile(UosConfigPath))
 		uosAttributes:=config.uosInfo.Attributes.Array()
 		serverMap:=gjson.Get(UosConfigPathStr,uosAttributes[0].String()).String()
-		//isConnected,_:=DetectNetworkConnection(serverMap)
-		//if !isConnected{
-		//	flag=false
-		//	info="无法连接到"+serverMap
-		//	return flag,info
-		//}
 		map_url:=serverMap+"/maps/"+localMapId+"/"
 		cmd := exec.Command("curl","-s",map_url)
 		output,_:=cmd.CombinedOutput()
@@ -239,34 +228,26 @@ func DetectCompassMap(config Config) (bool,string){
 		version_id:=gjson.Get(versions[len(versions)-1].String(),mapAttributes[3].String()).String()
 		local_version_id:=gjson.Get(res,mapAttributes[4].String()).String()
 		if version_id!=local_version_id{
-			flag=false
-			info="车端地图检测异常，地图版本与云端不一致，请更新!"
+			flag,info=false,"车端地图检测异常，地图版本与云端不一致，请更新!"
 		}
-		//}else {
-		//	flag=false
-		//	info="车端地图检测异常，车端地图id与云端不一致，请检查！"
-		//}
 	}
 	return flag,info
 }
 //1.1.3查看 Compass 中 UOS 配置正确
 func DetectUosPath(config Config) (bool,string) {
-	info,UosConfigPath:="UOS配置文件路径检测完毕，正常！",config.uosInfo.path
-	flag:=true
+	flag,info,UosConfigPath:=true,"UOS配置文件路径检测完毕，正常！",config.uosInfo.path
 	UosConfigPathStr:=string(ReadFile(UosConfigPath))
 	uosAttributes:=config.uosInfo.Attributes.Array()
 	UosPath:=gjson.Get(UosConfigPathStr,uosAttributes[1].String()).String()
 	if !Exists(UosPath){
-		flag=false
-		info="UOS检测异常，Uos配置"+UosPath+"路径不存在！"
+		flag,info=false,"UOS检测异常，Uos配置"+UosPath+"路径不存在！"
 	}
 	return flag,info
 }
 
 //1.1.4查看 compass 证书是否过期
 func DetectCert(config Config)(bool,string){
-	info,cert_path:="车端证书有效期检测完毕，证书有效！",config.certInfo.Path
-	flag:=true
+	flag,info,cert_path:=true,"车端证书有效期检测完毕，证书有效！",config.certInfo.Path
 	certPEMBlock:= ReadFile(cert_path)
 	cert,_:= pem.Decode(certPEMBlock)
 	if cert != nil {
@@ -277,8 +258,7 @@ func DetectCert(config Config)(bool,string){
 		NotBefore,NotAfter:=x509Cert.NotBefore.Format("2006-01-02 15:04"), x509Cert.NotAfter.Format("2006-01-02 15:04")
 		CurrentTime:=time.Now().Format("2006-01-02 15:04:05")
 		if NotBefore>CurrentTime || CurrentTime>NotAfter{
-			flag=false
-			info="车端证书有效期检测异常，证书已过期!"
+			flag,info=false,"车端证书有效期检测异常，证书已过期!"
 		}
 	}
 	return flag,info
@@ -287,9 +267,8 @@ func DetectCert(config Config)(bool,string){
 
 func DetectUosConfig(config Config) (bool,string)  {
 	UosConfigPath,SimulationCarPath,RealCarPath,UosUrl:=config.uosInfo.path,config.uosInfo.SimulationCar,config.uosInfo.RealCar,config.uosInfo.url
-	info:=""
-	mapRoot:="/etc/"
-	flag:=true
+	flag,info,mapRoot:=true,"","/etc/"
+
 	var err error
 	MOD_uos_config:=string(ReadFile(SimulationCarPath))
 	if !Exists(SimulationCarPath){
@@ -309,8 +288,7 @@ func DetectUosConfig(config Config) (bool,string)  {
 }
 //1.2.1 检测车辆运行模式、名字、地图
 func DetectVnameMap(err error,info string,MOD_uos_config string,mapRoot string,UosUrl string,config Config)(bool,string)  {
-	flag:=true
-	info="UOS 配置检测完毕，相关配置正确！"
+	flag,info:=true,"UOS 配置检测完毕，相关配置正确！"
 	uosAttributes:=config.uosInfo.Attributes.Array()
 	if err!=nil{
 		return false,""
@@ -319,30 +297,33 @@ func DetectVnameMap(err error,info string,MOD_uos_config string,mapRoot string,U
 		if run_scene=="real.compass"{
 			vehicle_name_config:=gjson.Get(MOD_uos_config,uosAttributes[8].String()).String()
 
-			output:=ReadFile("vehicle.json")
-			if !Exists("vehicle.json"){
+			var output []byte
+			if Exists("vehicle.json"){
+				output=ReadFile("vehicle.json")
+			}else {
 				cmd := exec.Command("curl","-s",UosUrl)
 				output,_=cmd.CombinedOutput()
 			}
+			if len(output)==0{
+				flag,info=false,"UOS 配置检测异常，未加载到 UOS 数据！"
+				return flag,info
+			}
+
 			vehicle_name_true:=gjson.Get(string(output),uosAttributes[9].String()).String()
 			if vehicle_name_true==""{
-				flag=false
-				info="curl -s "+UosUrl+" 未获取到车辆名"
+				flag,info=false,"curl -s "+UosUrl+" 未获取到车辆名"
 			}else {
 				mapPath:=mapRoot+gjson.Get(MOD_uos_config,uosAttributes[10].String()).String()
 				if vehicle_name_config==vehicle_name_true{
 					if !Exists(mapPath){
-						flag=false
-						info="UOS 配置检测异常，地图文件不存在!"
+						flag,info=false,"UOS 配置检测异常，地图文件不存在!"
 					}
 				}else {
-					flag=false
-					info="UOS 配置检测异常，车辆名称错误!-->uos_common.json中车辆名为："+vehicle_name_config+"，本地车名为："+vehicle_name_true
+					flag,info=false,"UOS 配置检测异常，车辆名称错误!-->uos_common.json中车辆名为："+vehicle_name_config+"，本地车名为："+vehicle_name_true
 				}
 			}
 		}else {
-			flag=false
-			info="UOS 配置检测异常，运行模式错误!-->uos_common.json中运行模式为："+run_scene
+			flag,info=false,"UOS 配置检测异常，运行模式错误!-->uos_common.json中运行模式为："+run_scene
 		}
 	}
 	return flag,info
@@ -362,34 +343,28 @@ func DetectVehicleConnectCloud(config Config)(bool,string)  {
 		if serverCloud.Exists()&&mqttBrokerId.Exists(){
 			isConnected,_:=DetectNetworkConnection(serverCloud.String())
 			if !isConnected{
-				flag=false
-				info="车云连接检测异常，车端无法连接到云端！"
+				flag,info=false,"车云连接检测异常，车端无法连接到云端！"
 			} else{
 				mqtt_username,mqtt_password,mqtt_broker_id:=gjson.Get(UosConfigPathStr,uosAttributes[3].String()).String(),gjson.Get(UosConfigPathStr,uosAttributes[4].String()).String(),gjson.Get(UosConfigPathStr,uosAttributes[5].String()).String()
 				flag,info=DetectMqtt(config.certInfo.Path,serverCloud.String(),mqtt_username,mqtt_password,mqtt_broker_id,"#")
 			}
 		}else {
-			flag=false
-			info="车云连接检测异常，车端配置文件中server.cloud 或 mqtt.broker_id 未正确配置！"
+			flag,info=false,"车云连接检测异常，车端配置文件中server.cloud 或 mqtt.broker_id 未正确配置！"
 		}
 	}
 	return flag,info
 }
 //1.3.1 判断 MQTT 能否订阅
 func DetectMqtt(cert_path string,server string,uname string,upwd string,brokerId string,topic string)  (bool,string){
-	info:="车云连接检测完毕，正常！"
-	flag:=true
-
+	flag,info:=true,"车云连接检测完毕，正常！"
 	certPEMBlock:= ReadFile(cert_path)
 	root_ca:=x509.NewCertPool()
 	load_ca:=root_ca.AppendCertsFromPEM([]byte(certPEMBlock))
 	if !load_ca {
-		flag=false
-		info="车云连接检测异常,证书解析失败!"
+		flag,info=false,"车云连接检测异常,证书解析失败!"
 		return flag,info
 	}
 	tlsConfig := &tls.Config{RootCAs: root_ca}
-
 	opts := mqtt.NewClientOptions().AddBroker(server).SetClientID(brokerId)
 	opts.SetTLSConfig(tlsConfig)
 	opts.SetUsername(uname)
@@ -398,18 +373,15 @@ func DetectMqtt(cert_path string,server string,uname string,upwd string,brokerId
 	//create object
 	c := mqtt.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
-		flag=false
-		info="车云连接检测异常，mqtt连接失败！"
+		flag,info=false,"车云连接检测异常，mqtt连接失败！"
 	}
 	//subscribe topic
 	if token := c.Subscribe(topic, 0, nil); token.Wait() && token.Error() != nil {
-		flag=false
-		info="车云连接检测异常，mqtt订阅失败！"
+		flag,info=false,"车云连接检测异常，mqtt订阅失败！"
 	}
 	//publish topic
 	if token := c.Publish(topic, 0, false,"test"); token.Wait() && token.Error() != nil {
-		flag=false
-		info="车云连接检测异常，mqtt发布失败！"
+		flag,info=false,"车云连接检测异常，mqtt发布失败！"
 	}
 	c.Disconnect(250)
 	time.Sleep(1 * time.Second)
