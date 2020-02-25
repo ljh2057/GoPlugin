@@ -20,7 +20,7 @@ import (
 
 	"github.com/eclipse/paho.mqtt.golang"
 	"github.com/tidwall/gjson"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 type BaseInfo struct {
