@@ -248,6 +248,9 @@ func DetectUosPath(config Config) (bool,string) {
 //1.1.4查看 compass 证书是否过期
 func DetectCert(config Config)(bool,string){
 	flag,info,cert_path:=true,"车端证书有效期检测完毕，证书有效！",config.certInfo.Path
+	if !Exists(cert_path){
+		return flag,"车端证书有效期检测完毕,未使用证书！"
+	}
 	certPEMBlock:= ReadFile(cert_path)
 	cert,_:= pem.Decode(certPEMBlock)
 	if cert != nil {
@@ -266,65 +269,60 @@ func DetectCert(config Config)(bool,string){
 //1.2.1检查 UOS 的配置是否正确
 
 func DetectUosConfig(config Config) (bool,string)  {
-	UosConfigPath,SimulationCarPath,RealCarPath,UosUrl:=config.uosInfo.path,config.uosInfo.SimulationCar,config.uosInfo.RealCar,config.uosInfo.url
-	flag,info,mapRoot:=true,"","/etc/"
+	flag,info,mapRoot:=true,"",""
 
-	var err error
-	MOD_uos_config:=string(ReadFile(SimulationCarPath))
-	if !Exists(SimulationCarPath){
-		isExist,_:=DetectUosPath(config)
-		UosConfigPathStr:=string(ReadFile(UosConfigPath))
-		uosAttributes:=config.uosInfo.Attributes.Array()
-		UosPath:=gjson.Get(UosConfigPathStr,uosAttributes[1].String()).String()
-		if isExist{
-			Real_car_path:=UosPath+RealCarPath
-			Real_car_path_Str:=string(ReadFile(Real_car_path))
-			MOD_uos_config=gjson.Get(Real_car_path_Str,uosAttributes[6].String()).String()
-			mapRoot=UosPath+"/"
-		}
+	UosConfigPath,SimulationCarPath,RealCarPath,UosUrl:=config.uosInfo.path,config.uosInfo.SimulationCar,config.uosInfo.RealCar,config.uosInfo.url
+	UosConfigPathStr:=string(ReadFile(UosConfigPath))
+	uosAttributes:=config.uosInfo.Attributes.Array()
+	UosPath:=gjson.Get(UosConfigPathStr,uosAttributes[1].String()).String()
+	SimulationCarPath=UosPath+"/"+SimulationCarPath
+	RealCarPath=UosPath+"/"+RealCarPath
+	var MOD_uos_config string
+	if Exists(SimulationCarPath){
+		MOD_uos_config=string(ReadFile(SimulationCarPath))
+	}else {
+		Real_car_path_Str:=string(ReadFile(RealCarPath))
+		MOD_uos_config=gjson.Get(Real_car_path_Str,uosAttributes[6].String()).String()
 	}
-	flag,info=DetectVnameMap(err,info,MOD_uos_config,mapRoot,UosUrl,config)
+	mapRoot=UosPath+"/"
+	flag,info=DetectVnameMap(info,MOD_uos_config,mapRoot,UosUrl,config)
 	return flag,info
 }
 //1.2.1 检测车辆运行模式、名字、地图
-func DetectVnameMap(err error,info string,MOD_uos_config string,mapRoot string,UosUrl string,config Config)(bool,string)  {
+func DetectVnameMap(info string,MOD_uos_config string,mapRoot string,UosUrl string,config Config)(bool,string)  {
 	flag,info:=true,"UOS 配置检测完毕，相关配置正确！"
 	uosAttributes:=config.uosInfo.Attributes.Array()
-	if err!=nil{
-		return false,""
-	}else {
-		run_scene:=gjson.Get(MOD_uos_config,uosAttributes[7].String()).String()
-		if run_scene=="real.compass"{
-			vehicle_name_config:=gjson.Get(MOD_uos_config,uosAttributes[8].String()).String()
+	run_scene:=gjson.Get(MOD_uos_config,uosAttributes[7].String()).String()
+	if run_scene=="real.compass"{
+		vehicle_name_config:=gjson.Get(MOD_uos_config,uosAttributes[8].String()).String()
 
-			var output []byte
-			if Exists("vehicle.json"){
-				output=ReadFile("vehicle.json")
-			}else {
-				cmd := exec.Command("curl","-s",UosUrl)
-				output,_=cmd.CombinedOutput()
-			}
-			if len(output)==0{
-				flag,info=false,"UOS 配置检测异常，未加载到 UOS 数据！"
-				return flag,info
-			}
-
-			vehicle_name_true:=gjson.Get(string(output),uosAttributes[9].String()).String()
-			if vehicle_name_true==""{
-				flag,info=false,"curl -s "+UosUrl+" 未获取到车辆名"
-			}else {
-				mapPath:=mapRoot+gjson.Get(MOD_uos_config,uosAttributes[10].String()).String()
-				if vehicle_name_config==vehicle_name_true{
-					if !Exists(mapPath){
-						flag,info=false,"UOS 配置检测异常，地图文件不存在!"
-					}
-				}else {
-					flag,info=false,"UOS 配置检测异常，车辆名称错误!-->uos_common.json中车辆名为："+vehicle_name_config+"，本地车名为："+vehicle_name_true
-				}
-			}
+		var output []byte
+		if Exists("vehicle.json"){
+			output=ReadFile("vehicle.json")
 		}else {
-			flag,info=false,"UOS 配置检测异常，运行模式错误!-->uos_common.json中运行模式为："+run_scene
+			cmd := exec.Command("curl","-s",UosUrl)
+			output,_=cmd.CombinedOutput()
 		}
+		if len(output)==0{
+			flag,info=false,"UOS 配置检测异常，未加载到 UOS 数据！"
+			return flag,info
+		}
+
+		vehicle_name_true:=gjson.Get(string(output),uosAttributes[9].String()).String()
+		if vehicle_name_true==""{
+			flag,info=false,"curl -s "+UosUrl+" 未获取到车辆名"
+		}else {
+			mapPath:=mapRoot+gjson.Get(MOD_uos_config,uosAttributes[10].String()).String()
+			if vehicle_name_config==vehicle_name_true{
+				if !Exists(mapPath){
+					flag,info=false,"UOS 配置检测异常，地图文件不存在!"
+				}
+			}else {
+				flag,info=false,"UOS 配置检测异常，车辆名称错误!-->uos_common.json中车辆名为："+vehicle_name_config+"，本地车名为："+vehicle_name_true
+			}
+		}
+	}else {
+		flag,info=false,"UOS 配置检测异常，运行模式错误!-->uos_common.json中运行模式为："+run_scene
 	}
 	return flag,info
 }
@@ -346,7 +344,7 @@ func DetectVehicleConnectCloud(config Config)(bool,string)  {
 				flag,info=false,"车云连接检测异常，车端无法连接到云端！"
 			} else{
 				mqtt_username,mqtt_password,mqtt_broker_id:=gjson.Get(UosConfigPathStr,uosAttributes[3].String()).String(),gjson.Get(UosConfigPathStr,uosAttributes[4].String()).String(),gjson.Get(UosConfigPathStr,uosAttributes[5].String()).String()
-				flag,info=DetectMqtt(config.certInfo.Path,serverCloud.String(),mqtt_username,mqtt_password,mqtt_broker_id,"#")
+				flag,info=DetectMqtt(config.certInfo.Dir,serverCloud.String(),mqtt_username,mqtt_password,mqtt_broker_id,"#")
 			}
 		}else {
 			flag,info=false,"车云连接检测异常，车端配置文件中server.cloud 或 mqtt.broker_id 未正确配置！"
@@ -355,21 +353,31 @@ func DetectVehicleConnectCloud(config Config)(bool,string)  {
 	return flag,info
 }
 //1.3.1 判断 MQTT 能否订阅
-func DetectMqtt(cert_path string,server string,uname string,upwd string,brokerId string,topic string)  (bool,string){
+func DetectMqtt(cert_dir string,server string,uname string,upwd string,brokerId string,topic string)  (bool,string){
 	flag,info:=true,"车云连接检测完毕，正常！"
-	certPEMBlock:= ReadFile(cert_path)
-	root_ca:=x509.NewCertPool()
-	load_ca:=root_ca.AppendCertsFromPEM([]byte(certPEMBlock))
-	if !load_ca {
-		flag,info=false,"车云连接检测异常,证书解析失败!"
-		return flag,info
-	}
-	tlsConfig := &tls.Config{RootCAs: root_ca}
 	opts := mqtt.NewClientOptions().AddBroker(server).SetClientID(brokerId)
-	opts.SetTLSConfig(tlsConfig)
+	if Exists(cert_dir){
+		opts = mqtt.NewClientOptions().AddBroker("ssl://"+server).SetClientID(brokerId)
+		certpool := x509.NewCertPool()
+		pemCerts, err := ioutil.ReadFile(cert_dir+"root_cert.crt")
+		if err == nil {
+			certpool.AppendCertsFromPEM(pemCerts)
+		}
+		// Import client certificate/key pair
+		cert, err := tls.LoadX509KeyPair(cert_dir+"device_cert.crt", cert_dir+"device_key.pem")
+		if err != nil {
+			panic(err)
+		}
+		tlsConfig := &tls.Config{
+			RootCAs: certpool,
+			Certificates:[]tls.Certificate{cert},
+			InsecureSkipVerify:true,
+		}
+		opts.SetTLSConfig(tlsConfig)
+	}
 	opts.SetUsername(uname)
 	opts.SetPassword(upwd)
-	opts.SetKeepAlive(2 * time.Second)
+	opts.SetKeepAlive(3 * time.Second)
 	//create object
 	c := mqtt.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
