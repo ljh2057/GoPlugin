@@ -343,8 +343,17 @@ func DetectVehicleConnectCloud(config Config)(bool,string)  {
 			if !isConnected{
 				flag,info=false,"车云连接检测异常，车端无法连接到云端！"
 			} else{
-				mqtt_username,mqtt_password,mqtt_broker_id:=gjson.Get(UosConfigPathStr,uosAttributes[3].String()).String(),gjson.Get(UosConfigPathStr,uosAttributes[4].String()).String(),gjson.Get(UosConfigPathStr,uosAttributes[5].String()).String()
-				flag,info=DetectMqtt(config.certInfo.Dir,serverCloud.String(),mqtt_username,mqtt_password,mqtt_broker_id,"#")
+				var mqttInfo [6] string
+				for i:=0;i<6;i++{
+					if i<3{
+						//mqtt_username,mqtt_password,mqtt_broker_id
+						mqttInfo[i]=gjson.Get(UosConfigPathStr,uosAttributes[i+3].String()).String()
+					}else {
+						//mqtt_cert_file,mqtt_key_file,mqtt_ca_cert_file
+						mqttInfo[i]=gjson.Get(UosConfigPathStr,uosAttributes[i+8].String()).String()
+					}
+				}
+				flag,info=DetectMqtt(config.certInfo.Dir,serverCloud.String(),mqttInfo,"#")
 			}
 		}else {
 			flag,info=false,"车云连接检测异常，车端配置文件中server.cloud 或 mqtt.broker_id 未正确配置！"
@@ -353,18 +362,18 @@ func DetectVehicleConnectCloud(config Config)(bool,string)  {
 	return flag,info
 }
 //1.3.1 判断 MQTT 能否订阅
-func DetectMqtt(cert_dir string,server string,uname string,upwd string,brokerId string,topic string)  (bool,string){
+func DetectMqtt(cert_dir string,server string,mqttInfo [6]string,topic string)  (bool,string){
 	flag,info:=true,"车云连接检测完毕，正常！"
-	opts := mqtt.NewClientOptions().AddBroker(server).SetClientID(brokerId)
+	opts := mqtt.NewClientOptions().AddBroker(server).SetClientID(mqttInfo[2])
 	if Exists(cert_dir){
-		opts = mqtt.NewClientOptions().AddBroker("ssl://"+server).SetClientID(brokerId)
+		opts = mqtt.NewClientOptions().AddBroker("ssl://"+server).SetClientID(mqttInfo[2])
 		certpool := x509.NewCertPool()
-		pemCerts, err := ioutil.ReadFile(cert_dir+"root_cert.crt")
+		pemCerts, err := ioutil.ReadFile(mqttInfo[5])
 		if err == nil {
 			certpool.AppendCertsFromPEM(pemCerts)
 		}
 		// Import client certificate/key pair
-		cert, err := tls.LoadX509KeyPair(cert_dir+"device_cert.crt", cert_dir+"device_key.pem")
+		cert, err := tls.LoadX509KeyPair(mqttInfo[3], mqttInfo[4])
 		if err != nil {
 			panic(err)
 		}
@@ -375,8 +384,8 @@ func DetectMqtt(cert_dir string,server string,uname string,upwd string,brokerId 
 		}
 		opts.SetTLSConfig(tlsConfig)
 	}
-	opts.SetUsername(uname)
-	opts.SetPassword(upwd)
+	opts.SetUsername(mqttInfo[0])
+	opts.SetPassword(mqttInfo[1])
 	opts.SetKeepAlive(3 * time.Second)
 	//create object
 	c := mqtt.NewClient(opts)

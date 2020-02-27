@@ -42,7 +42,11 @@
       "run_scene",
       "vehicle_name",
       "data.vin",
-      "roadmap_fname"
+      "roadmap_fname",
+      "mqtt\\.cert_file",
+      "mqtt\\.key_file",
+      "mqtt\\.ca_cert_file"
+
     ]
   },
   "certInfo": {
