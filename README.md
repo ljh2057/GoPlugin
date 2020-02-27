@@ -49,7 +49,7 @@ CompassChecker/
 config.json 文件参考如下，可根据需要修改该文件：如
 	修改 outputInfo.path 可以指定输出结果文件保存位置。 
 	通过添加 compassInfo.services 可添加多个服务进行检测。
-	attributes 表示工具中使用到的相关 json 文件中的属性，注：如属性中含有"." (例如 "server.map": "http://10.0.165.2:9090" )  需要使用   "server\\.map" 对 "." 进行解析。
+	attributes 表示工具中使用到的相关 json 文件中的属性，注：如属性中含有"." (例如 "server.map": "http://10.0.165.2:9090" )  需要使用   "server\\\.map" 对 "." 进行解析。
 
 ```json
 {
