@@ -100,7 +100,6 @@ config.json 文件参考如下，可根据需要修改该文件：如
       "mqtt\\.cert_file",
       "mqtt\\.key_file",
       "mqtt\\.ca_cert_file"
-
     ]
   },
   "certInfo": {
