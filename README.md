@@ -1,5 +1,5 @@
 ### 本项目为 Compass 端自检工具
-
+#### 基于 DCU 的 Linux 命令行可执行文件,适用于 DCU ，EFU 某些操作不适用
 #### 已实现功能：
 
 参照 《WIP: 云脑日常运维操作手册》
@@ -20,13 +20,12 @@
      - 检查 uos 的配置是否正确
      - 检测运行模式是否正确
      - 检测车辆名字是否正确
-     - 检测地图是否存在
+     - 检测车端地图是否存在
 
 5. 检测 Compass 车云通讯通道的可用性
 
      - 检查车端是否连接了正确的云端
-
-     - 判断 mosquitto 能否订阅
+     - 判断 mosquitto 能否订阅（含使用证书情况）
 
 #### 使用方法：
 
@@ -50,7 +49,7 @@ CompassChecker/
 config.json 文件参考如下，可根据需要修改该文件：如
 	修改 outputInfo.path 可以指定输出结果文件保存位置。 
 	通过添加 compassInfo.services 可添加多个服务进行检测。
-	attributes 表示工具中使用到的相关 json 文件中的属性，注：如属性中含有"." (例如 "server.map": "http://10.0.165.2:9090" )  需要使用   "server\\.map" 对 "." 进行解析。
+	attributes 表示工具中使用到的相关 json 文件中的属性，注：如属性中含有"." (例如 "server.map": "http://10.0.165.2:9090" )  需要使用   "server\\\\.map" 对 "." 进行解析。
 
 ```json
 {
@@ -71,13 +70,20 @@ config.json 文件参考如下，可根据需要修改该文件：如
   },
   "compassInfo" :{
     "services": [
-      "/usr/sbin/sshd -D"
+      "/bin/bash /opt/compass/shell/startcompass",
+      "/opt/compass/depends/venv/bin/python3 /opt/compass/depends/venv/bin/supervisord -n -c /opt/compass/config/supervisord.conf",
+      "/opt/compass/depends/venv/bin/python3 /opt/compass/depends/venv/bin/flask run -h 0.0.0.0 -p 8000 --no-reload",
+      "python3 vehicle_server.pyc foreground",
+      "python3 ws_server.pyc",
+      "/opt/compass/depends/lib/bin/redis-server 127.0.0.1:20002",
+      "python3 map_server.pyc foreground",
+      "/opt/compass/mapcached/mapcached"
     ]
   },
   "uosInfo": {
     "path" : "/opt/compass/vehicle_backend/web_service/config.json",
-    "simulationCar" : "/etc/uos_config.json",
-    "realCar" : "/uos_common.json",
+    "simulationCar" : "etc/uos_config.json",
+    "realCar" : "uos_common.json",
     "url" : "localhost:8000/apis/v2/vehicle",
     "attributes": [
       "server\\.map",
@@ -90,7 +96,10 @@ config.json 文件参考如下，可根据需要修改该文件：如
       "run_scene",
       "vehicle_name",
       "data.vin",
-      "roadmap_fname"
+      "roadmap_fname",
+      "mqtt\\.cert_file",
+      "mqtt\\.key_file",
+      "mqtt\\.ca_cert_file"
     ]
   },
   "certInfo": {
