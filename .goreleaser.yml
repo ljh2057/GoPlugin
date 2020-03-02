@@ -6,7 +6,6 @@ builds:
   goos:
     - linux
   goarch:
-    - arm
     - arm64
 archives:
 - id: deploy-archive
