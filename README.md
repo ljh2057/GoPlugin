@@ -31,10 +31,14 @@
 
 在车端终端执行以下命令后会自动创建 CompassChecker 文件夹并进行自检。
 
+arm
 ```bash
-curl -sL https://github.com/ljh2057/GoPlugin/releases/latest/download/deploy.sh | sh
+curl -sL https://github.com/ljh2057/GoPlugin/releases/latest/download/deploy_arm.sh | sh
 ```
-
+amd
+```bash
+curl -sL https://github.com/ljh2057/GoPlugin/releases/latest/download/deploy_amd.sh | sh
+```
 CompassChecker 文件夹目录如下：
 
 ```
