@@ -246,8 +246,8 @@ func DetectUosPath(config Config) (bool,string) {
 }
 
 //1.1.4查看 compass 证书是否过期
-func DetectCert(config Config)(bool,string){
-	flag,info,cert_path:=true,"车端证书有效期检测完毕，证书有效！",config.certInfo.Path
+func DetectCert(cert_path string)(bool,string){
+	flag,info:=true,"车云连接检测完毕，正常！"
 	if !Exists(cert_path){
 		return flag,"车端证书有效期检测完毕,未使用证书！"
 	}
@@ -261,7 +261,7 @@ func DetectCert(config Config)(bool,string){
 		NotBefore,NotAfter:=x509Cert.NotBefore.Format("2006-01-02 15:04"), x509Cert.NotAfter.Format("2006-01-02 15:04")
 		CurrentTime:=time.Now().Format("2006-01-02 15:04:05")
 		if NotBefore>CurrentTime || CurrentTime>NotAfter{
-			flag,info=false,"车端证书有效期检测异常，证书已过期!"
+			flag,info=false,"车云连接检测完毕，车端证书已过期!"
 		}
 	}
 	return flag,info
@@ -343,17 +343,21 @@ func DetectVehicleConnectCloud(config Config)(bool,string)  {
 			if !isConnected{
 				flag,info=false,"车云连接检测异常，车端无法连接到云端！"
 			} else{
-				var mqttInfo [6] string
+				mqttInfo:=make(map[string]string)
+				var key,value string
 				for i:=0;i<6;i++{
 					if i<3{
-						//mqtt_username,mqtt_password,mqtt_broker_id
-						mqttInfo[i]=gjson.Get(UosConfigPathStr,uosAttributes[i+3].String()).String()
+						key=uosAttributes[i+3].String()
+						value=gjson.Get(UosConfigPathStr,key).String()
 					}else {
-						//mqtt_cert_file,mqtt_key_file,mqtt_ca_cert_file
-						mqttInfo[i]=gjson.Get(UosConfigPathStr,uosAttributes[i+8].String()).String()
+						key=uosAttributes[i+8].String()
+						value=gjson.Get(UosConfigPathStr,key).String()
+					}
+					if len(value)>0{
+						mqttInfo[key]=value
 					}
 				}
-				flag,info=DetectMqtt(config.certInfo.Dir,serverCloud.String(),mqttInfo,"#")
+				flag,info=DetectMqtt(serverCloud.String(),uosAttributes,mqttInfo,"#")
 			}
 		}else {
 			flag,info=false,"车云连接检测异常，车端配置文件中server.cloud 或 mqtt.broker_id 未正确配置！"
@@ -362,18 +366,22 @@ func DetectVehicleConnectCloud(config Config)(bool,string)  {
 	return flag,info
 }
 //1.3.1 判断 MQTT 能否订阅
-func DetectMqtt(cert_dir string,server string,mqttInfo [6]string,topic string)  (bool,string){
+func DetectMqtt(server string,keys []gjson.Result,mqttInfo map[string]string,topic string)  (bool,string){
 	flag,info:=true,"车云连接检测完毕，正常！"
-	opts := mqtt.NewClientOptions().AddBroker(server).SetClientID(mqttInfo[2])
-	if Exists(cert_dir){
-		opts = mqtt.NewClientOptions().AddBroker("ssl://"+server).SetClientID(mqttInfo[2])
+	opts := mqtt.NewClientOptions().AddBroker(server).SetClientID(mqttInfo[keys[5].String()])
+	if len(mqttInfo[keys[11].String()])>0&&len(mqttInfo[keys[12].String()])>0&&len(mqttInfo[keys[13].String()])>0{
+		flag,info=DetectCert(mqttInfo[keys[11].String()])
+		if !flag{
+			return flag,info
+		}
+		opts = mqtt.NewClientOptions().AddBroker("ssl://"+server).SetClientID(mqttInfo[keys[5].String()])
 		certpool := x509.NewCertPool()
-		pemCerts, err := ioutil.ReadFile(mqttInfo[5])
+		pemCerts, err := ioutil.ReadFile(mqttInfo[keys[13].String()])
 		if err == nil {
 			certpool.AppendCertsFromPEM(pemCerts)
 		}
 		// Import client certificate/key pair
-		cert, err := tls.LoadX509KeyPair(mqttInfo[3], mqttInfo[4])
+		cert, err := tls.LoadX509KeyPair(mqttInfo[keys[11].String()], mqttInfo[keys[12].String()])
 		if err != nil {
 			panic(err)
 		}
@@ -384,8 +392,10 @@ func DetectMqtt(cert_dir string,server string,mqttInfo [6]string,topic string)  
 		}
 		opts.SetTLSConfig(tlsConfig)
 	}
-	opts.SetUsername(mqttInfo[0])
-	opts.SetPassword(mqttInfo[1])
+	if len(mqttInfo[keys[3].String()])>0&&len(mqttInfo[keys[4].String()])>0{
+		opts.SetUsername(mqttInfo[keys[3].String()])
+		opts.SetPassword(mqttInfo[keys[4].String()])
+	}
 	opts.SetKeepAlive(3 * time.Second)
 	//create object
 	c := mqtt.NewClient(opts)
@@ -423,11 +433,6 @@ func DetectMain() error {
 		if isExist{
 			//DetectCompassMap
 			_,info=DetectCompassMap(config)
-			AddProblems(problems,&index,info)
-		}
-		if Exists(config.certInfo.Dir){
-			//DetectCert
-			_,info=DetectCert(config)
 			AddProblems(problems,&index,info)
 		}
 		//DetectUosConfig
