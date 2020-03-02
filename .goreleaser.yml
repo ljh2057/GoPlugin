@@ -3,6 +3,13 @@
 builds:
 - env:
   - CGO_ENABLED=0
+goos:
+  - linux:
+   goarch:
+    - arm
+    - arm64
+   goarm:
+    - 8 
 archives:
 - id: deploy-archive
   replacements:
