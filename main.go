@@ -223,8 +223,14 @@ func DetectCompassMap(config Config) (bool,string){
 		uosAttributes:=config.uosInfo.Attributes.Array()
 		serverMap:=gjson.Get(UosConfigPathStr,uosAttributes[0].String()).String()
 		map_url:=serverMap+"/maps/"+localMapId+"/"
-		cmd := exec.Command("curl","-s",map_url)
-		output,_:=cmd.CombinedOutput()
+		resp,err:=http.Get(map_url)
+		if err!=nil{
+			flag,info=false,"车端地图检测异常，未加载到地图数据！"
+			return flag,info
+		}
+		defer resp.Body.Close()
+		output,err:=ioutil.ReadAll(resp.Body)
+
 		versions:=gjson.Get(string(output),mapAttributes[2].String()).Array()
 		version_id:=gjson.Get(versions[len(versions)-1].String(),mapAttributes[3].String()).String()
 		local_version_id:=gjson.Get(res,mapAttributes[4].String()).String()
@@ -299,7 +305,7 @@ func DetectVnameMap(info string,MOD_uos_config string,mapRoot string,UosUrl stri
 
 		resp,err:=http.Get("http://"+UosUrl)
 		if err!=nil{
-			flag,info=false,"车端地图检测异常，未加载到车端数据！"
+			flag,info=false,"车端地图检测异常，未加载到 UOS 数据！"
 			return flag,info
 		}
 		defer resp.Body.Close()
@@ -312,7 +318,7 @@ func DetectVnameMap(info string,MOD_uos_config string,mapRoot string,UosUrl stri
 
 		vehicle_name_true:=gjson.Get(string(output),uosAttributes[9].String()).String()
 		if vehicle_name_true==""{
-			flag,info=false,"curl -s "+UosUrl+" 未获取到车辆名"
+			flag,info=false,"UOS 配置检测异常，未获取到车辆名"
 		}else {
 			mapPath:=mapRoot+gjson.Get(MOD_uos_config,uosAttributes[10].String()).String()
 			if vehicle_name_config==vehicle_name_true{
