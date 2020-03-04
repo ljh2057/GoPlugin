@@ -200,14 +200,15 @@ func DetectCompassMap(config Config) (bool,string){
 	UosConfigPath:=config.uosInfo.path
 	mapAttributes:=config.mapInfo.Attributes.Array()
 	info,flag:="车端地图检测完毕，正常！",true
-	var output []byte
 
-	if Exists("compassMap.json"){
-		output=ReadFile("compassMap.json")
-	}else {
-		cmd := exec.Command("curl","-s",config.mapInfo.Url)
-		output,_=cmd.CombinedOutput()
+	resp,err:=http.Get("http://"+config.mapInfo.Url)
+	if err!=nil{
+		flag,info=false,"车端地图检测异常，未加载到车端数据！"
+		return flag,info
 	}
+	defer resp.Body.Close()
+	output,err:=ioutil.ReadAll(resp.Body)
+
   	if len(output)==0{
 		flag,info=false,"车端地图检测异常，未加载到车端数据！"
 		return flag,info
@@ -296,13 +297,14 @@ func DetectVnameMap(info string,MOD_uos_config string,mapRoot string,UosUrl stri
 	if run_scene=="real.compass"{
 		vehicle_name_config:=gjson.Get(MOD_uos_config,uosAttributes[8].String()).String()
 
-		var output []byte
-		if Exists("vehicle.json"){
-			output=ReadFile("vehicle.json")
-		}else {
-			cmd := exec.Command("curl","-s",UosUrl)
-			output,_=cmd.CombinedOutput()
+		resp,err:=http.Get("http://"+UosUrl)
+		if err!=nil{
+			flag,info=false,"车端地图检测异常，未加载到车端数据！"
+			return flag,info
 		}
+		defer resp.Body.Close()
+		output,err:=ioutil.ReadAll(resp.Body)
+
 		if len(output)==0{
 			flag,info=false,"UOS 配置检测异常，未加载到 UOS 数据！"
 			return flag,info
