@@ -3,11 +3,6 @@ pipeline {
     agent any
     
     stages {
-        stage('Init gopath') {
-            steps{
-                sh 'mkdir -p $GOPATH/{bin,pkg,src}'  // go运行环境目录
-            }
-        }
         stage('Checkout'){
             steps{
             checkout([$class: 'GitSCM', 
