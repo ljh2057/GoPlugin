@@ -2,7 +2,6 @@ node {
     withEnv(["GOPATH=$WORKSPACE"]) {     // 设置stage运行时的环境变量
         env.PATH="${GOPATH}/bin:$PATH"
         stage('Checkout'){
-            steps{
             checkout([$class: 'GitSCM', 
             branches: [[name: '*/master']], 
             doGenerateSubmoduleConfigurations: false, 
@@ -11,22 +10,15 @@ node {
             userRemoteConfigs: [[
                 credentialsId: '8b93f470-9b51-48fb-b44b-ed7bbaa963ee', 
                 url: 'https://github.com/ljh2057/GoPlugin']]])
-            }
         }
         stage('Build') {
-            steps{
                 sh 'cd src/GoPlugin/; go test && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -v -a -installsuffix cgo -o GoPlugin_arm . && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -a -installsuffix cgo -o GoPlugin_amd .'
-            }
         }
         stage('Test'){
-            steps{
                 sh 'cd src/GoPlugin/; ./GoPlugin_amd'
-            }
         }
         stage('Deploy'){
-            steps{
                 sh 'cd src/GoPlugin/;tar -zcvf GoPlugin_${VERSION}_arm64.tar.gz config.json GoPlugin_arm && tar -zcvf GoPlugin_${VERSION}_amd64.tar.gz config.json GoPlugin_amd'
-            }
         }
         // stage('Get code') {
         //     checkout([                      // git repo
