@@ -1,6 +1,6 @@
 def VERSION='v0.1.7'
 pipeline {
-    agent { docker { image 'golang' } }
+    agent any
     
     stages {
         stage('Init gopath') {
