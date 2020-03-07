@@ -12,13 +12,13 @@ node {
                 url: 'https://github.com/ljh2057/GoPlugin']]])
         }
         stage('Build') {
-                sh 'cd src/GoPlugin/; go test && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -v -a -installsuffix cgo -o GoPlugin_arm . && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -a -installsuffix cgo -o GoPlugin_amd .'
+                sh 'cd src/${PROJ_DIR}/; go test && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -v -a -installsuffix cgo -o GoPlugin_arm . && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -a -installsuffix cgo -o GoPlugin_amd .'
         }
         stage('Test'){
-                sh 'cd src/GoPlugin/; ./GoPlugin_amd'
+                sh 'cd src/${PROJ_DIR}/; ./GoPlugin_amd'
         }
         stage('Deploy'){
-                sh 'cd src/GoPlugin/;tar -zcvf GoPlugin_${VERSION}_arm64.tar.gz config.json GoPlugin_arm && tar -zcvf GoPlugin_${VERSION}_amd64.tar.gz config.json GoPlugin_amd'
+                sh 'cd src/${PROJ_DIR}/;tar -zcvf GoPlugin_${VERSION}_arm64.tar.gz config.json GoPlugin_arm && tar -zcvf GoPlugin_${VERSION}_amd64.tar.gz config.json GoPlugin_amd'
         }
         // stage('Get code') {
         //     checkout([                      // git repo
