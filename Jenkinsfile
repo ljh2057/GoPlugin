@@ -1,5 +1,5 @@
 pipeline {
-    agent any  //在任何jenkins节点上都可运行
+    agent node1  //在任何jenkins节点上都可运行
     tools{
         go 'go-1.14'
     }
