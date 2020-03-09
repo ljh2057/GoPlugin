@@ -15,6 +15,8 @@ pipeline {
                     def root = tool name: 'go-1.14', type: 'go'
                     withEnv(["GOPATH=${env.WORKSPACE}/go", "GOROOT=${root}", "GOBIN=${root}/bin", "PATH+GO=${root}/bin"]) {
                         sh "mkdir -p ${env.WORKSPACE}/go/src"
+                        sh "mv ${env.WORKSPACE}  ${env.WORKSPACE}/go/src/$APP_NAME"
+                        sh "ls ${env.WORKSPACE}/go/src/$APP_NAME"
                     }
                 }
             }
@@ -22,7 +24,7 @@ pipeline {
       
         stage('Build') {    // buid 阶段
             steps {        //build 步骤          
-                sh 'cd src/$APP_NAME/; go test && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -v -a -installsuffix cgo -o GoPlugin_arm . && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -a -installsuffix cgo -o GoPlugin_amd .'
+                sh 'cd ${env.WORKSPACE}/go/src/$APP_NAME;go get -v && go test && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -v -a -installsuffix cgo -o GoPlugin_arm . && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -v -a -installsuffix cgo -o GoPlugin_amd .'
            }
         }
         // stage('Test') {     // test 阶段
