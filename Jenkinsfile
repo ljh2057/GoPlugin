@@ -13,6 +13,9 @@ pipeline {
                 script{
                     sh "echo ${env.WORKSPACE}"
                     sh "ls ${env.WORKSPACE}"
+                    withEnv(["GOPATH=${JENKINS_HOME}/jobs/${JOB_NAME}/builds/${BUILD_ID}"]) {
+                        env.PATH="${GOPATH}/bin:$PATH"
+                    }
                 }
             }
         }
