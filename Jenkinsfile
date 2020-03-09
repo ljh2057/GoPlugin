@@ -1,7 +1,7 @@
 pipeline {
     agent any  //在任何jenkins节点上都可运行
     tools{
-        go 'go-1.13'
+        go 'go-1.14'
     }
     environment {
         APP_NAME = 'GoPlugin'
