@@ -1,8 +1,8 @@
 pipeline {
     agent any  //在任何jenkins节点上都可运行
-    //tools{
-    //    go 'go-1.14'
-    //}
+    tools{
+        go 'go-1.14'
+    }
     environment {
         APP_NAME = 'GoPlugin'
     }
@@ -12,10 +12,10 @@ pipeline {
                 script{
                     sh "echo ${env.WORKSPACE}"
                     sh "ls ${env.WORKSPACE}"
-                    def root = tool name: 'go-1.14', type: 'go'
-                    withEnv(["GOPATH=${env.WORKSPACE}/go", "GOROOT=${root}", "GOBIN=${root}/bin", "PATH+GO=${root}/bin"]) {
-                        sh "mkdir -p ${env.WORKSPACE}/go/src"
-                    }
+                    //def root = tool name: 'go-1.14', type: 'go'
+                    //withEnv(["GOPATH=${env.WORKSPACE}/go", "GOROOT=${root}", "GOBIN=${root}/bin", "PATH+GO=${root}/bin"]) {
+                    //    sh "mkdir -p ${env.WORKSPACE}/go/src"
+                    //}
                 }
             }
         }
